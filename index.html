@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Visualizer</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --panel-bg: #ffffff;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --accent-color: #4f46e5;
+            --accent-hover: #4338ca;
+            --border-color: #dee2e6;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            padding: 2rem;
+        }
+
+        .main-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .main-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .main-header p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 2.5fr;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .visualization {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 600px;
+            position: relative;
+        }
+        
+        #chartPlaceholder {
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        #chartPlaceholder svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        textarea, select, input[type="text"] {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        textarea:focus, select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+        
+        textarea {
+            height: 150px;
+            resize: vertical;
+            font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        #fileUploadBtn {
+            display: inline-block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--panel-bg);
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        
+        #fileUploadBtn:hover {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        #csvFile {
+            display: none;
+        }
+        
+        .divider {
+            text-align: center;
+            margin: -0.5rem 0;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        #generateChartBtn {
+            padding: 0.85rem;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 1rem;
+        }
+
+        #generateChartBtn:hover {
+            background-color: var(--accent-hover);
+        }
+        
+        #chartContainer {
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="main-header">
+        <h1>Interactive Data Visualizer</h1>
+        <p>Upload a CSV file or paste data to generate beautiful, interactive charts instantly.</p>
+    </header>
+
+    <div class="container">
+        <div class="panel controls">
+            
+            <div class="control-group">
+                <label for="fileUploadBtn">1. Provide Data</label>
+                <input type="file" id="csvFile" accept=".csv">
+                <label for="csvFile" id="fileUploadBtn">Upload CSV File</label>
+            </div>
+            
+            <div class="divider">or</div>
+            
+            <div class="control-group">
+                <label for="csvData">Paste your CSV Data</label>
+                <textarea id="csvData">Year,Revenue,Expenses,Profit
+2018,1000,600,400
+2019,1150,650,500
+2020,950,700,250
+2021,1300,750,550
+2022,1500,850,650
+2023,1700,950,750</textarea>
+            </div>
+
+            <div class="control-group">
+                <label for="chartTitle">2. Chart Title</label>
+                <input type="text" id="chartTitle" value="Company Financials">
+            </div>
+
+            <div class="control-group">
+                <label for="chartType">3. Select Chart Type</label>
+                <select id="chartType">
+                    <option value="bar">Bar Chart</option>
+                    <option value="line">Line Chart</option>
+                    <option value="pie">Pie Chart</option>
+                    <option value="scatter">Scatter Plot</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="xColumn" id="xColumnLabel">4. Select Label/X-Axis Column</label>
+                <select id="xColumn"></select>
+            </div>
+            
+            <div class="control-group">
+                <label for="yColumn" id="yColumnLabel">5. Select Value/Y-Axis Column</label>
+                <select id="yColumn"></select>
+            </div>
+
+            <button id="generateChartBtn">Visualize Data</button>
+
+        </div>
+        <div class="panel visualization">
+            <div id="chartContainer">
+                <div id="chartPlaceholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 1.5m1-1.5l1 1.5m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+                    </svg>
+                    <h3>Your chart will appear here</h3>
+                    <p>Provide your data and click "Visualize Data" to get started.</p>
+                </div>
+                 <canvas id="myChart" style="display: none;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const csvDataEl = document.getElementById('csvData');
+        const csvFileEl = document.getElementById('csvFile');
+        const chartTypeEl = document.getElementById('chartType');
+        const xColumnEl = document.getElementById('xColumn');
+        const yColumnEl = document.getElementById('yColumn');
+        const generateChartBtn = document.getElementById('generateChartBtn');
+        const chartTitleEl = document.getElementById('chartTitle');
+        const xColumnLabelEl = document.getElementById('xColumnLabel');
+        const yColumnLabelEl = document.getElementById('yColumnLabel');
+        const chartPlaceholderEl = document.getElementById('chartPlaceholder');
+        const myChartCanvas = document.getElementById('myChart');
+        const ctx = myChartCanvas.getContext('2d');
+
+        let myChart = null;
+        let parsedData = null;
+
+        const getRandomColor = () => {
+            const r = Math.floor(Math.random() * 255);
+            const g = Math.floor(Math.random() * 255);
+            const b = Math.floor(Math.random() * 255);
+            return `rgba(${r}, ${g}, ${b}, 0.7)`;
+        };
+        
+        const parseAndPopulate = () => {
+            const csvText = csvDataEl.value.trim();
+            if (!csvText) return;
+
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    parsedData = results;
+                    const headers = results.meta.fields;
+                    
+                    xColumnEl.innerHTML = '';
+                    yColumnEl.innerHTML = '';
+
+                    headers.forEach(header => {
+                        const option1 = document.createElement('option');
+                        option1.value = header;
+                        option1.textContent = header;
+                        xColumnEl.appendChild(option1);
+
+                        const option2 = document.createElement('option');
+                        option2.value = header;
+                        option2.textContent = header;
+                        yColumnEl.appendChild(option2);
+                    });
+                    
+                    if(headers.length > 1) {
+                        yColumnEl.selectedIndex = 1;
+                    }
+                },
+                error: (err) => {
+                    console.error("Error parsing CSV:", err);
+                    alert("There was an error parsing your CSV data. Please check the console for details.");
+                }
+            });
+        };
+        
+        const generateChart = () => {
+            if (!parsedData || parsedData.data.length === 0) {
+                alert("Please provide valid CSV data first.");
+                return;
+            }
+
+            if (myChart) {
+                myChart.destroy();
+            }
+            
+            chartPlaceholderEl.style.display = 'none';
+            myChartCanvas.style.display = 'block';
+
+            const chartType = chartTypeEl.value;
+            const xColumn = xColumnEl.value;
+            const yColumn = yColumnEl.value;
+            const chartTitle = chartTitleEl.value;
+            
+            if (!xColumn || !yColumn) {
+                alert("Please select columns for both axes.");
+                return;
+            }
+
+            let labels, data, chartConfig;
+
+            if (chartType === 'scatter') {
+                data = parsedData.data.map(row => ({
+                    x: parseFloat(row[xColumn]),
+                    y: parseFloat(row[yColumn])
+                }));
+                
+                chartConfig = {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: `${yColumn} vs ${xColumn}`,
+                            data: data,
+                            backgroundColor: getRandomColor(),
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { title: { display: true, text: chartTitle, font: { size: 18 } } },
+                        scales: {
+                            x: { title: { display: true, text: xColumn } },
+                            y: { title: { display: true, text: yColumn } }
+                        }
+                    }
+                };
+
+            } else {
+                labels = parsedData.data.map(row => row[xColumn]);
+                data = parsedData.data.map(row => parseFloat(row[yColumn]));
+                
+                const backgroundColors = (chartType === 'pie') 
+                    ? data.map(() => getRandomColor()) 
+                    : getRandomColor();
+
+                chartConfig = {
+                    type: chartType,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: yColumn,
+                            data: data,
+                            backgroundColor: backgroundColors,
+                            borderColor: 'rgba(79, 70, 229, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { title: { display: true, text: chartTitle, font: {size: 18} } },
+                        scales: chartType !== 'pie' ? {
+                            y: { beginAtZero: true, title: { display: true, text: yColumn } },
+                            x: { title: { display: true, text: xColumn } }
+                        } : {}
+                    }
+                };
+            }
+            
+            myChart = new Chart(ctx, chartConfig);
+        };
+        
+        const handleFileUpload = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                csvDataEl.value = e.target.result;
+                parseAndPopulate();
+            };
+            reader.readAsText(file);
+        };
+        
+        generateChartBtn.addEventListener('click', generateChart);
+        csvDataEl.addEventListener('input', parseAndPopulate);
+        csvFileEl.addEventListener('change', handleFileUpload);
+        
+        chartTypeEl.addEventListener('change', (e) => {
+            const type = e.target.value;
+            if (type === 'pie') {
+                xColumnLabelEl.textContent = "4. Select Label Column";
+                yColumnLabelEl.textContent = "5. Select Value Column";
+            } else if (type === 'scatter') {
+                xColumnLabelEl.textContent = "4. Select X-Axis (Numeric)";
+                yColumnLabelEl.textContent = "5. Select Y-Axis (Numeric)";
+            } else {
+                xColumnLabelEl.textContent = "4. Select Label/X-Axis Column";
+                yColumnLabelEl.textContent = "5. Select Value/Y-Axis Column";
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            parseAndPopulate();
+        });
+
+    </script>
+</body>
+</html>
