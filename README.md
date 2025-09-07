@@ -2,8 +2,6 @@
 
 A modern, responsive web application that transforms CSV data into beautiful, interactive charts. Built with vanilla JavaScript, Chart.js, and PapaParse for fast and reliable data visualization.
 
-![Data Visualizer Screenshot](https://via.placeholder.com/800x400/4f46e5/ffffff?text=Interactive+Data+Visualizer)
-
 ## ✨ Features
 
 - **Multiple Chart Types**: Bar charts, line charts, pie charts, and scatter plots
